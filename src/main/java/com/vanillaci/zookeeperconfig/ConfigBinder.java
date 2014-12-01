@@ -23,24 +23,25 @@ public final class ConfigBinder<T> implements Closeable {
 	}
 
 	/**
-	 * @param basePaths The base paths to bind to. The order provided will be the order checked, so the most important roots should be listed first.
+	 * @param primaryBasePath The first path to check for requested values.
+	 * @param basePaths Additional base paths to bind to. If the primary base path doesn't have a value for a node with a requested name, these paths are also checked.
 	 */
-	public static <T> ConfigBinder<T> bind(CuratorFramework client, Class<T> configInterface, String ... basePaths) {
+	public static <T> ConfigBinder<T> bind(CuratorFramework client, Class<T> configInterface, String primaryBasePath, String ... basePathsArray) {
 		if (client == null) {
 			throw new IllegalArgumentException("null client");
 		}
 		if (configInterface == null) {
 			throw new IllegalArgumentException("null config");
 		}
-		if (basePaths == null || basePaths.length <= 0) {
-			throw new IllegalArgumentException("null or empty basePath");
-		}
 
-		cleanBasePaths(basePaths);
+		ImmutableList.Builder<String> builder = ImmutableList.builder();
+		builder.add(primaryBasePath);
+		builder.add(basePathsArray);
+		List<String> basePaths = builder.build();
 
 		ImmutableList.Builder<PathCache> pathCachesBuilder = ImmutableList.builder();
 		for (String basePath : basePaths) {
-
+			basePath = cleanBasePath(basePath);
 			PathChildrenCache cache = new PathChildrenCache(client, basePath, true);
 
 			try {
@@ -61,16 +62,15 @@ public final class ConfigBinder<T> implements Closeable {
 		return configBinder;
 	}
 
-	private static void cleanBasePaths(String... basePaths) {
-		for (int i = 0; i < basePaths.length; i++) {
-			if (!basePaths[i].startsWith("/")) {
-				basePaths[i] = "/" + basePaths[i];
-			}
-
-			if (basePaths[i].endsWith("/")) {
-				basePaths[i] = basePaths[i].substring(0, basePaths[i].length() - 1);
-			}
+	private static String cleanBasePath(String basePath) {
+		if (!basePath.startsWith("/")) {
+			basePath = "/" + basePath;
 		}
+
+		if (basePath.endsWith("/")) {
+			basePath = basePath.substring(0, basePath.length() - 1);
+		}
+		return basePath;
 	}
 
 	@Override
