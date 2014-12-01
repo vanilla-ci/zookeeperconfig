@@ -44,6 +44,16 @@ public class ConfigBinderTest {
 	}
 
 	@Test
+	public void testMultiSimpleBinding() throws Exception {
+		binder = ConfigBinder.bind(client, ConfigObject.class, "/test/path", "/test/otherpath");
+
+		client.create().forPath("/test/otherpath/hostname", "someOtherData".getBytes());
+		waitForZookeeper();
+
+		Assert.assertEquals("someOtherData", binder.getConfig().hostname());
+	}
+
+	@Test
 	public void testDefaultsFromServer() throws Exception {
 		client.create().creatingParentsIfNeeded().forPath("/test/path");
 		client.create().forPath("/test/path/hostname", "someOtherData".getBytes());

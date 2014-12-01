@@ -1,35 +1,44 @@
 package com.vanillaci.zookeeperconfig;
 
 import com.fasterxml.jackson.databind.*;
+import com.google.common.collect.*;
 import org.apache.curator.framework.recipes.cache.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 /**
  * Created by joeljohnson on 12/1/14.
  */
 public class ConfigBinderProxyHandler implements InvocationHandler {
 	private static final ObjectMapper objectMapper = new ObjectMapper();
-	private final PathCache pathCache;
+	private final List<PathCache> pathCaches;
 
-	public ConfigBinderProxyHandler(PathCache pathCache) {
-		this.pathCache = pathCache;
+	public ConfigBinderProxyHandler(List<PathCache> pathCaches) {
+		this.pathCaches = ImmutableList.copyOf(pathCaches);
 	}
 
 	@Override
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+		if(args != null && args.length > 0) {
+			throw new UnsupportedOperationException("Only methods with no arguments can be invoked.");
+		}
+
 		final String pathName = findPathName(method);
-		final String fullPath = pathCache.getBasePath() + "/" + pathName;
 
 		Class<?> returnType = method.getReturnType();
 
-		ChildData currentData = pathCache.getCache().getCurrentData(fullPath);
-		if(currentData == null) {
-			return defaultValue(method);
+		for (PathCache pathCache : pathCaches) {
+			final String fullPath = pathCache.getBasePath() + "/" + pathName;
+
+			ChildData currentData = pathCache.getCache().getCurrentData(fullPath);
+			if (currentData != null) {
+				Object result = new String(currentData.getData());
+				return convertResultToReturnType(result, returnType);
+			}
 		}
 
-		Object result = new String(currentData.getData());
-		return convertResultToReturnType(result, returnType);
+		return defaultValue(method);
 	}
 
 	private boolean isPrimitive(Class<?> returnType) {

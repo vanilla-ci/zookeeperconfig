@@ -1,70 +1,83 @@
 package com.vanillaci.zookeeperconfig;
 
+import com.google.common.collect.*;
 import com.vanillaci.exceptions.*;
 import org.apache.curator.framework.*;
 import org.apache.curator.framework.recipes.cache.*;
-import org.apache.log4j.*;
+import org.apache.curator.utils.*;
 
 import java.io.*;
 import java.lang.reflect.*;
+import java.util.*;
 
 /**
  * Created by joeljohnson on 11/30/14.
  */
 public final class ConfigBinder<T> implements Closeable {
-	private static final Logger logger = Logger.getLogger(ConfigBinder.class);
-
-	private final PathChildrenCache pathCache;
+	private final List<PathCache> pathCache;
 	private final T config;
 
-	private ConfigBinder(PathChildrenCache pathCache, T config) {
-		this.pathCache = pathCache;
+	private ConfigBinder(List<PathCache> pathCache, T config) {
+		this.pathCache = ImmutableList.copyOf(pathCache);
 		this.config = config;
 	}
 
-	public static <T> ConfigBinder<T> bind(CuratorFramework client, Class<T> configInterface, String basePath) {
+	/**
+	 * @param basePaths The base paths to bind to. The order provided will be the order checked, so the most important roots should be listed first.
+	 */
+	public static <T> ConfigBinder<T> bind(CuratorFramework client, Class<T> configInterface, String ... basePaths) {
 		if (client == null) {
 			throw new IllegalArgumentException("null client");
 		}
 		if (configInterface == null) {
 			throw new IllegalArgumentException("null config");
 		}
-		if (basePath == null || basePath.isEmpty()) {
+		if (basePaths == null || basePaths.length <= 0) {
 			throw new IllegalArgumentException("null or empty basePath");
 		}
 
-		basePath = cleanBasePath(basePath);
+		cleanBasePaths(basePaths);
 
-		PathChildrenCache cache = new PathChildrenCache(client, basePath, true);
+		ImmutableList.Builder<PathCache> pathCachesBuilder = ImmutableList.builder();
+		for (String basePath : basePaths) {
 
-		try {
-			cache.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
-		} catch (Exception e) {
-			throw new CuratorException(e);
+			PathChildrenCache cache = new PathChildrenCache(client, basePath, true);
+
+			try {
+				cache.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
+			} catch (Exception e) {
+				throw new CuratorException(e);
+			}
+
+			PathCache pathCache = new PathCache(basePath, cache);
+			pathCachesBuilder.add(pathCache);
 		}
+		ImmutableList<PathCache> pathCaches = pathCachesBuilder.build();
 
-		PathCache pathCache = new PathCache(basePath, cache);
-		ConfigBinderProxyHandler handler = new ConfigBinderProxyHandler(pathCache);
+		ConfigBinderProxyHandler handler = new ConfigBinderProxyHandler(pathCaches);
 		T proxy = (T) Proxy.newProxyInstance(configInterface.getClassLoader(), new Class[] { configInterface }, handler);
 
-		ConfigBinder<T> configBinder = new ConfigBinder<T>(cache, proxy);
+		ConfigBinder<T> configBinder = new ConfigBinder<T>(pathCaches, proxy);
 		return configBinder;
 	}
 
-	private static String cleanBasePath(String basePath) {
-		if (!basePath.startsWith("/")) {
-			basePath = "/" + basePath;
-		}
+	private static void cleanBasePaths(String... basePaths) {
+		for (int i = 0; i < basePaths.length; i++) {
+			if (!basePaths[i].startsWith("/")) {
+				basePaths[i] = "/" + basePaths[i];
+			}
 
-		if (basePath.endsWith("/")) {
-			basePath = basePath.substring(0, basePath.length() - 1);
+			if (basePaths[i].endsWith("/")) {
+				basePaths[i] = basePaths[i].substring(0, basePaths[i].length() - 1);
+			}
 		}
-		return basePath;
 	}
 
 	@Override
 	public void close() throws IOException {
-		pathCache.close();
+		for (PathCache cache : pathCache) {
+			CloseableUtils.closeQuietly(cache.getCache());
+		}
 	}
 
 	public T getConfig() {
