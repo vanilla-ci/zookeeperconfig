@@ -10,22 +10,20 @@ import java.lang.reflect.*;
  */
 public class ConfigBinderProxyHandler implements InvocationHandler {
 	private static final ObjectMapper objectMapper = new ObjectMapper();
-	private final String basePath;
-	private final PathChildrenCache pathCache;
+	private final PathCache pathCache;
 
-	public ConfigBinderProxyHandler(String basePath, PathChildrenCache pathCache) {
-		this.basePath = basePath;
+	public ConfigBinderProxyHandler(PathCache pathCache) {
 		this.pathCache = pathCache;
 	}
 
 	@Override
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 		final String pathName = findPathName(method);
-		final String fullPath = basePath + "/" + pathName;
+		final String fullPath = pathCache.getBasePath() + "/" + pathName;
 
 		Class<?> returnType = method.getReturnType();
 
-		ChildData currentData = pathCache.getCurrentData(fullPath);
+		ChildData currentData = pathCache.getCache().getCurrentData(fullPath);
 		if(currentData == null) {
 			return defaultValue(method);
 		}

@@ -35,18 +35,19 @@ public final class ConfigBinder<T> implements Closeable {
 
 		basePath = cleanBasePath(basePath);
 
-		PathChildrenCache pathCache = new PathChildrenCache(client, basePath, true);
+		PathChildrenCache cache = new PathChildrenCache(client, basePath, true);
 
 		try {
-			pathCache.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
+			cache.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
 		} catch (Exception e) {
 			throw new CuratorException(e);
 		}
 
-		ConfigBinderProxyHandler handler = new ConfigBinderProxyHandler(basePath, pathCache);
+		PathCache pathCache = new PathCache(basePath, cache);
+		ConfigBinderProxyHandler handler = new ConfigBinderProxyHandler(pathCache);
 		T proxy = (T) Proxy.newProxyInstance(configInterface.getClassLoader(), new Class[] { configInterface }, handler);
 
-		ConfigBinder<T> configBinder = new ConfigBinder<T>(pathCache, proxy);
+		ConfigBinder<T> configBinder = new ConfigBinder<T>(cache, proxy);
 		return configBinder;
 	}
 
