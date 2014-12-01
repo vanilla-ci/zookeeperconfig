@@ -36,7 +36,7 @@ public class ConfigBinderTest {
 
 		client.create().forPath("/test/path/hostname", "someData".getBytes());
 		client.create().forPath("/test/path/hostport", String.valueOf(8080).getBytes());
-		waitForZookeeper();
+		waitForZookeeperCacheUpdate();
 
 		Assert.assertEquals("someData", binder.getConfig().hostname());
 		Assert.assertEquals(8080, binder.getConfig().port());
@@ -48,7 +48,7 @@ public class ConfigBinderTest {
 		binder = ConfigBinder.bind(client, ConfigObject.class, "/test/path", "/test/otherpath");
 
 		client.create().forPath("/test/otherpath/hostname", "someOtherData".getBytes());
-		waitForZookeeper();
+		waitForZookeeperCacheUpdate();
 
 		Assert.assertEquals("someOtherData", binder.getConfig().hostname());
 	}
@@ -59,7 +59,7 @@ public class ConfigBinderTest {
 		client.create().forPath("/test/path/hostname", "someOtherData".getBytes());
 		client.create().forPath("/test/path/hostport", String.valueOf(8181).getBytes());
 
-		waitForZookeeper();
+		waitForZookeeperCacheUpdate();
 
 		binder = ConfigBinder.bind(client, ConfigObject.class, "/test/path/");
 
@@ -68,7 +68,21 @@ public class ConfigBinderTest {
 		Assert.assertEquals(1, binder.getConfig().withDefaultValue());
 	}
 
-	private void waitForZookeeper() throws InterruptedException {
+	@Test
+	public void testUpdate() throws Exception {
+		binder = ConfigBinder.bind(client, ConfigObject.class, "/test/path/");
+		ConfigObject config = binder.getConfig();
+
+		config.hostname("newHostname");
+		waitForZookeeperCacheUpdate();
+		Assert.assertEquals("newHostname", config.hostname());
+
+		config.hostname("anotherHostname");
+		waitForZookeeperCacheUpdate();
+		Assert.assertEquals("anotherHostname", config.hostname());
+	}
+
+	private void waitForZookeeperCacheUpdate() throws InterruptedException {
 		Thread.sleep(5);
 	}
 }

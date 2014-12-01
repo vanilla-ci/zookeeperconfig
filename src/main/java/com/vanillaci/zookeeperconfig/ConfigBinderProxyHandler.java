@@ -2,7 +2,10 @@ package com.vanillaci.zookeeperconfig;
 
 import com.fasterxml.jackson.databind.*;
 import com.google.common.collect.*;
+import com.vanillaci.exceptions.*;
+import org.apache.curator.framework.*;
 import org.apache.curator.framework.recipes.cache.*;
+import org.apache.zookeeper.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -12,18 +15,29 @@ import java.util.*;
  */
 public class ConfigBinderProxyHandler implements InvocationHandler {
 	private static final ObjectMapper objectMapper = new ObjectMapper();
+	private final CuratorFramework client;
 	private final List<PathCache> pathCaches;
 
-	public ConfigBinderProxyHandler(List<PathCache> pathCaches) {
+	public ConfigBinderProxyHandler(CuratorFramework client, List<PathCache> pathCaches) {
+		this.client = client;
 		this.pathCaches = ImmutableList.copyOf(pathCaches);
 	}
 
 	@Override
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-		if(args != null && args.length > 0) {
-			throw new UnsupportedOperationException("Only methods with no arguments can be invoked.");
+		if(args == null || args.length == 0) {
+			return handleGet(method);
 		}
 
+		if(args != null && args.length == 1) {
+			handleSet(method, args[0]);
+			return null;
+		}
+
+		throw new UnsupportedOperationException("Only methods with no arguments and a return value (getters), or methods with a single argument and void return value (setters) can be invoked.");
+	}
+
+	private Object handleGet(Method method) {
 		final String pathName = findPathName(method);
 
 		Class<?> returnType = method.getReturnType();
@@ -39,6 +53,29 @@ public class ConfigBinderProxyHandler implements InvocationHandler {
 		}
 
 		return defaultValue(method);
+	}
+
+	private void handleSet(Method method, Object value) {
+		final String pathName = findPathName(method);
+		PathCache primaryPathCache = pathCaches.get(0);
+
+		final String fullPath = primaryPathCache.getBasePath() + "/" + pathName;
+		String data = objectMapper.convertValue(value, String.class);
+
+		try {
+			client.create()
+				.creatingParentsIfNeeded()
+				.withMode(CreateMode.PERSISTENT)
+				.forPath(fullPath);
+		} catch (Exception ignore) {
+			// TODO: better way to check if path exists
+		}
+
+		try {
+			client.setData().forPath(fullPath, data.getBytes());
+		} catch (Exception e) {
+			throw new CuratorException(e);
+		}
 	}
 
 	private boolean isPrimitive(Class<?> returnType) {
@@ -83,7 +120,7 @@ public class ConfigBinderProxyHandler implements InvocationHandler {
 			if(boolean.class.isAssignableFrom(returnType)) {
 				return false;
 			} else {
-				return returnType.cast(0);
+				return 0;
 			}
 		} else {
 			return null;

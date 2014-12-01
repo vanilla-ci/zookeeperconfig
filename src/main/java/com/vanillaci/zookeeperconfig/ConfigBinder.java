@@ -55,7 +55,7 @@ public final class ConfigBinder<T> implements Closeable {
 		}
 		ImmutableList<PathCache> pathCaches = pathCachesBuilder.build();
 
-		ConfigBinderProxyHandler handler = new ConfigBinderProxyHandler(pathCaches);
+		ConfigBinderProxyHandler handler = new ConfigBinderProxyHandler(client, pathCaches);
 		T proxy = (T) Proxy.newProxyInstance(configInterface.getClassLoader(), new Class[] { configInterface }, handler);
 
 		ConfigBinder<T> configBinder = new ConfigBinder<T>(pathCaches, proxy);

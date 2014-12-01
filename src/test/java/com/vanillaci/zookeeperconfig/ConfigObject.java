@@ -1,13 +1,14 @@
 package com.vanillaci.zookeeperconfig;
 
-import java.util.*;
-
 /**
  * Created by joeljohnson on 11/30/14.
  */
 public interface ConfigObject {
 	@Config // value/path is optional
 	public String hostname();
+
+	@Config
+	public void hostname(String hostname);
 
 	@Config("hostport")
 	public int port();
