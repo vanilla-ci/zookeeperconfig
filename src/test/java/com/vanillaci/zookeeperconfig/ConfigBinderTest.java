@@ -14,7 +14,6 @@ import java.io.*;
 public class ConfigBinderTest {
 	private TestingServer server;
 	private CuratorFramework client;
-	private ConfigObject configObject;
 	private ConfigBinder<ConfigObject> binder;
 
 	@Before
@@ -22,8 +21,6 @@ public class ConfigBinderTest {
 		server = new TestingServer(true);
 		client = CuratorFrameworkFactory.newClient(server.getConnectString(), new ExponentialBackoffRetry(1000, 3));
 		client.start();
-
-		configObject = new ConfigObject();
 	}
 
 	@After
@@ -35,42 +32,30 @@ public class ConfigBinderTest {
 
 	@Test
 	public void testSimpleBinding() throws Exception {
-		binder = ConfigBinder.bind(client, configObject, "/test/path/");
+		binder = ConfigBinder.bind(client, ConfigObject.class, "/test/path/");
 
 		client.create().forPath("/test/path/hostname", "someData".getBytes());
 		client.create().forPath("/test/path/hostport", String.valueOf(8080).getBytes());
 		waitForZookeeper();
 
-		Assert.assertEquals("someData", configObject.getHostname());
-		Assert.assertEquals(8080, configObject.getPort());
-		Assert.assertEquals(1, configObject.getDefaultValue());
+		Assert.assertEquals("someData", binder.getConfig().hostname());
+		Assert.assertEquals(8080, binder.getConfig().port());
+		Assert.assertEquals(1, binder.getConfig().withDefaultValue());
 	}
 
 	@Test
 	public void testDefaultsFromServer() throws Exception {
 		client.create().creatingParentsIfNeeded().forPath("/test/path");
-		client.create().forPath("/test/path/hostname", "someData".getBytes());
-		client.create().forPath("/test/path/hostport", String.valueOf(8080).getBytes());
+		client.create().forPath("/test/path/hostname", "someOtherData".getBytes());
+		client.create().forPath("/test/path/hostport", String.valueOf(8181).getBytes());
 
 		waitForZookeeper();
 
-		binder = ConfigBinder.bind(client, configObject, "/test/path/");
+		binder = ConfigBinder.bind(client, ConfigObject.class, "/test/path/");
 
-		Assert.assertEquals("someData", configObject.getHostname());
-		Assert.assertEquals(8080, configObject.getPort());
-		Assert.assertEquals(1, configObject.getDefaultValue());
-	}
-
-	@Test
-	public void testComplexObjects() throws Exception {
-		binder = ConfigBinder.bind(client, configObject, "/test/path/");
-
-		client.create().forPath("/test/path/complex", "{\"someKey\":\"someValue\"}".getBytes());
-		waitForZookeeper();
-
-		Assert.assertNotNull(configObject.getComplex());
-		Assert.assertEquals("someValue", configObject.getComplex().get("someKey"));
-		Assert.assertEquals(1, configObject.getComplex().size());
+		Assert.assertEquals("someOtherData", binder.getConfig().hostname());
+		Assert.assertEquals(8181, binder.getConfig().port());
+		Assert.assertEquals(1, binder.getConfig().withDefaultValue());
 	}
 
 	private void waitForZookeeper() throws InterruptedException {
