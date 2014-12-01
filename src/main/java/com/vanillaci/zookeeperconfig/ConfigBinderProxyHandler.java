@@ -106,13 +106,7 @@ public class ConfigBinderProxyHandler implements InvocationHandler {
 	}
 
 	private Object convertResultToReturnType(Object result, Class<?> returnType) {
-		if(isPrimitive(returnType)) {
-			return objectMapper.convertValue(result, returnType);
-		} else if(returnType != String.class) {
-			throw new UnsupportedOperationException("@com.vanillaci.zookeeperconfig.Config currently only works with primitives, boxed primitives, and Strings");
-		}
-
-		return result;
+		return objectMapper.convertValue(result, returnType);
 	}
 
 	private Object defaultValue(Class<?> returnType) {
