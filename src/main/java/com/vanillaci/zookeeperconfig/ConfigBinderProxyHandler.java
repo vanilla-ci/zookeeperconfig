@@ -78,18 +78,6 @@ public class ConfigBinderProxyHandler implements InvocationHandler {
 		}
 	}
 
-	private boolean isPrimitive(Class<?> returnType) {
-		return	returnType.isPrimitive() ||
-				returnType == Boolean.class ||
-				returnType == Character.class ||
-				returnType == Byte.class ||
-				returnType == Short.class ||
-				returnType == Integer.class ||
-				returnType == Long.class ||
-				returnType == Float.class ||
-				returnType == Double.class;
-	}
-
 	private Object defaultValue(Method method) {
 		Class<?> returnType = method.getReturnType();
 
