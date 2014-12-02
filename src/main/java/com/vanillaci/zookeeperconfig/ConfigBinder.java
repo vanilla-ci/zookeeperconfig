@@ -15,11 +15,11 @@ import java.util.*;
  */
 public final class ConfigBinder<T> implements Closeable {
 	private final List<PathCache> pathCache;
-	private final T config;
+	private final T boundObject;
 
-	private ConfigBinder(List<PathCache> pathCache, T config) {
+	private ConfigBinder(List<PathCache> pathCache, T boundObject) {
 		this.pathCache = ImmutableList.copyOf(pathCache);
-		this.config = config;
+		this.boundObject = boundObject;
 	}
 
 	/**
@@ -80,7 +80,7 @@ public final class ConfigBinder<T> implements Closeable {
 		}
 	}
 
-	public T getConfig() {
-		return config;
+	public T getBoundObject() {
+		return boundObject;
 	}
 }

@@ -38,9 +38,9 @@ public class ConfigBinderTest {
 		client.create().forPath("/test/path/hostport", String.valueOf(8080).getBytes());
 		waitForZookeeperCacheUpdate();
 
-		Assert.assertEquals("someData", binder.getConfig().hostname());
-		Assert.assertEquals(8080, binder.getConfig().port());
-		Assert.assertEquals(1, binder.getConfig().withDefaultValue());
+		Assert.assertEquals("someData", binder.getBoundObject().hostname());
+		Assert.assertEquals(8080, binder.getBoundObject().port());
+		Assert.assertEquals(1, binder.getBoundObject().withDefaultValue());
 	}
 
 	@Test
@@ -50,7 +50,7 @@ public class ConfigBinderTest {
 		client.create().forPath("/test/otherpath/hostname", "someOtherData".getBytes());
 		waitForZookeeperCacheUpdate();
 
-		Assert.assertEquals("someOtherData", binder.getConfig().hostname());
+		Assert.assertEquals("someOtherData", binder.getBoundObject().hostname());
 	}
 
 	@Test
@@ -63,15 +63,15 @@ public class ConfigBinderTest {
 
 		binder = ConfigBinder.bind(client, ConfigObject.class, "/test/path/");
 
-		Assert.assertEquals("someOtherData", binder.getConfig().hostname());
-		Assert.assertEquals(8181, binder.getConfig().port());
-		Assert.assertEquals(1, binder.getConfig().withDefaultValue());
+		Assert.assertEquals("someOtherData", binder.getBoundObject().hostname());
+		Assert.assertEquals(8181, binder.getBoundObject().port());
+		Assert.assertEquals(1, binder.getBoundObject().withDefaultValue());
 	}
 
 	@Test
 	public void testUpdate() throws Exception {
 		binder = ConfigBinder.bind(client, ConfigObject.class, "/test/path/");
-		ConfigObject config = binder.getConfig();
+		ConfigObject config = binder.getBoundObject();
 
 		config.hostname("newHostname");
 		waitForZookeeperCacheUpdate();
