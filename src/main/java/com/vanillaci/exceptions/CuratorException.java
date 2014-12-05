@@ -1,7 +1,9 @@
 package com.vanillaci.exceptions;
 
 /**
- * Created by joeljohnson on 12/1/14.
+ * Thrown when an unhandled exception is thrown by the Curator framework
+ *
+ * @author Joel Johnson
  */
 public class CuratorException extends RuntimeException {
 	public CuratorException(Throwable cause) {

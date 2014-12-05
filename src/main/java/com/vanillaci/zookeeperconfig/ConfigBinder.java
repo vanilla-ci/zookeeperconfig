@@ -11,7 +11,9 @@ import java.lang.reflect.*;
 import java.util.*;
 
 /**
- * Created by joeljohnson on 11/30/14.
+ * Used to bind a path's children to an interface.
+ *
+ * @author Joel Johnson
  */
 public final class ConfigBinder<T> implements Closeable {
 	private final List<PathCache> pathCache;
@@ -23,8 +25,10 @@ public final class ConfigBinder<T> implements Closeable {
 	}
 
 	/**
-	 * @param primaryBasePath The first path to check for requested values.
-	 * @param basePaths Additional base paths to bind to. If the primary base path doesn't have a value for a node with a requested name, these paths are also checked.
+	 * @param client The instance of the curator framework client to be used to fetch/set data
+	 * @param configInterface The interface that will be implemented by the binder to expose the values from the zookeeper instance.
+	 * @param primaryBasePath The first path to check for requested values. Also the base path to use when setting values.
+	 * @param basePaths Additional base paths to bind to. These paths treated as read-only and are never updated. If the primary base path doesn't have a value for a node with a requested name, these paths are also checked.
 	 */
 	public static <T> ConfigBinder<T> bind(CuratorFramework client, Class<T> configInterface, String primaryBasePath, String ... basePathsArray) {
 		if (client == null) {
@@ -73,6 +77,11 @@ public final class ConfigBinder<T> implements Closeable {
 		return basePath;
 	}
 
+	/**
+	 * Should be called when done syncing, typically on application shutdown.
+	 *
+	 * @throws IOException
+	 */
 	@Override
 	public void close() throws IOException {
 		for (PathCache cache : pathCache) {
@@ -80,6 +89,9 @@ public final class ConfigBinder<T> implements Closeable {
 		}
 	}
 
+	/**
+	 * @return The object to interface with the data stored on zookeeper.
+	 */
 	public T getBoundObject() {
 		return boundObject;
 	}
